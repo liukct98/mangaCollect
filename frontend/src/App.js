@@ -11,7 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'https://mangacollect-backend.onrender.com/api';
 
 const ImageCapture = ({ onCapture }) => {
   const webcamRef = useRef(null);
