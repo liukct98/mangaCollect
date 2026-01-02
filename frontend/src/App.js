@@ -21,6 +21,10 @@ const ImageCapture = ({ onCapture }) => {
     onCapture(imageSrc);
   }, [webcamRef, onCapture]);
 
+  const videoConstraints = {
+    facingMode: "environment" // usa la camera posteriore su mobile
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 2 }}>
       <Webcam
@@ -28,6 +32,7 @@ const ImageCapture = ({ onCapture }) => {
         ref={webcamRef}
         screenshotFormat="image/jpeg"
         width="100%"
+        videoConstraints={videoConstraints}
       />
       <Button onClick={capture} variant="contained" sx={{ mt: 1 }}>Scatta Foto</Button>
     </Box>
