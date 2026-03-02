@@ -4,12 +4,14 @@ import Webcam from 'react-webcam';
 import {
   AppBar, Toolbar, Typography, Container, Tabs, Tab, Box, Grid, Card, CardMedia, CardContent,
   CardActions, Button, IconButton, Dialog, DialogTitle, DialogContent,
-  TextField, DialogActions, CssBaseline, Fab, List, ListItem, ListItemText, Divider
+  TextField, DialogActions, CssBaseline, Fab, List, ListItem, ListItemText, Divider,
+  Switch, FormControlLabel, Chip, Select, MenuItem, FormControl, InputLabel, OutlinedInput
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 const API_URL = 'https://mangacollect-backend.onrender.com/api';
 
@@ -96,19 +98,74 @@ function App() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
   const [selectedSeries, setSelectedSeries] = useState(null);
+  const [userName, setUserName] = useState(localStorage.getItem('userName') || '');
+  const [showAll, setShowAll] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [loginOpen, setLoginOpen] = useState(!userName);
 
   const itemTypes = ['fumetti', 'funkopop', 'figure'];
   const currentType = itemTypes[tabIndex];
 
+  // Carica la lista degli utenti
+  useEffect(() => {
+    if (userName) {
+      axios.get(`${API_URL}/users`)
+        .then(res => setAllUsers(res.data))
+        .catch(err => console.error('Error fetching users:', err));
+    }
+  }, [userName]);
+
   const fetchItems = useCallback(() => {
-    axios.get(`${API_URL}/${currentType}`)
+    let params = {};
+    if (showAll) {
+      // Mostra tutto, nessun filtro
+      params = {};
+    } else if (selectedUsers.length > 0) {
+      // Mostra solo gli utenti selezionati
+      params = { userName: selectedUsers };
+    } else {
+      // Mostra solo i miei
+      params = { userName };
+    }
+    
+    axios.get(`${API_URL}/${currentType}`, { params })
       .then(res => setItems(res.data))
       .catch(err => console.error(`Error fetching ${currentType}:`, err));
-  }, [currentType]);
+  }, [currentType, userName, showAll, selectedUsers]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  const handleLogin = (name) => {
+    setUserName(name);
+    localStorage.setItem('userName', name);
+    setLoginOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUserName('');
+    localStorage.removeItem('userName');
+    setLoginOpen(true);
+    setShowAll(false);
+    setSelectedUsers([]);
+    setAllUsers([]);
+  };
+
+  const handleUserFilterChange = (event) => {
+    const value = event.target.value;
+    setSelectedUsers(typeof value === 'string' ? value.split(',') : value);
+    setShowAll(false);
+  };
+
+  const handleShowAllChange = (event) => {
+    const checked = event.target.checked;
+    setShowAll(checked);
+    if (checked) {
+      setSelectedUsers([]);
+    }
+  };
 
   const handleFormOpen = (item = null) => {
     setCurrentItem(item);
@@ -134,8 +191,11 @@ function App() {
     const isNew = !itemData.id;
     const method = isNew ? 'post' : 'put';
     const url = isNew ? `${API_URL}/${currentType}` : `${API_URL}/${currentType}/${itemData.id}`;
+    
+    // Aggiungi userName agli oggetti nuovi
+    const dataToSave = isNew ? { ...itemData, userName } : itemData;
 
-    axios[method](url, itemData)
+    axios[method](url, dataToSave)
       .then((res) => {
         fetchItems(); // Ricarica i dati per riflettere le modifiche
         handleFormClose();
@@ -190,9 +250,14 @@ function App() {
                 alt={firstIssue.titolo}
               />
               <CardContent>
-                <Typography variant="h5" component="div" noWrap title={firstIssue.titolo}>
-                  {firstIssue.titolo}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h5" component="div" noWrap title={firstIssue.titolo} sx={{ flexGrow: 1 }}>
+                    {firstIssue.titolo}
+                  </Typography>
+                  {(showAll || selectedUsers.length > 0) && firstIssue.userName && (
+                    <Chip label={firstIssue.userName} size="small" color="primary" />
+                  )}
+                </Box>
                 <Typography color="text.secondary">
                   {series.length} {series.length > 1 ? 'albi' : 'albo'}
                 </Typography>
@@ -216,9 +281,14 @@ function App() {
             />
           )}
           <CardContent>
-            <Typography variant="h5" component="div" noWrap title={item.titolo || item.nome}>
-              {item.titolo || item.nome}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h5" component="div" noWrap title={item.titolo || item.nome} sx={{ flexGrow: 1 }}>
+                {item.titolo || item.nome}
+              </Typography>
+              {(showAll || selectedUsers.length > 0) && item.userName && (
+                <Chip label={item.userName} size="small" color="primary" />
+              )}
+            </Box>
             {item.numero && <Typography color="text.secondary">Numero: {item.numero}</Typography>}
             {item.autore && <Typography color="text.secondary">Autore: {item.autore}</Typography>}
             {item.editore && <Typography color="text.secondary">Editore: {item.editore}</Typography>}
@@ -242,9 +312,44 @@ function App() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Il Mio Raccoglitore
           </Typography>
+          {userName && (
+            <>
+              <Typography variant="body1" sx={{ mr: 2 }}>
+                {userName}
+              </Typography>
+              <IconButton color="inherit" onClick={handleLogout}>
+                <LogoutIcon />
+              </IconButton>
+            </>
+          )}
         </Toolbar>
       </AppBar>
       <Container sx={{ mt: 4, pb: 12 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+          <FormControlLabel
+            control={<Switch checked={showAll} onChange={handleShowAllChange} />}
+            label="Mostra tutti"
+          />
+          {!showAll && allUsers.length > 0 && (
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel id="user-filter-label">Filtra per utente</InputLabel>
+              <Select
+                labelId="user-filter-label"
+                multiple
+                value={selectedUsers}
+                onChange={handleUserFilterChange}
+                input={<OutlinedInput label="Filtra per utente" />}
+                renderValue={(selected) => selected.length === 0 ? 'Solo i miei' : selected.join(', ')}
+              >
+                {allUsers.filter(u => u !== userName).map((user) => (
+                  <MenuItem key={user} value={user}>
+                    {user}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </Box>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)} centered>
             <Tab label="Fumetti" />
@@ -283,6 +388,8 @@ function App() {
                 onDelete={handleDelete}
             />
         )}
+
+        <LoginDialog open={loginOpen} onLogin={handleLogin} />
       </Container>
     </>
   );
@@ -370,6 +477,43 @@ function ItemFormDialog({ open, onClose, onSave, item, itemType }) {
       <DialogActions>
         <Button onClick={onClose}>Annulla</Button>
         <Button onClick={handleSubmit}>Salva</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function LoginDialog({ open, onLogin }) {
+  const [name, setName] = useState('');
+
+  const handleSubmit = () => {
+    if (name.trim()) {
+      onLogin(name.trim());
+    }
+  };
+
+  return (
+    <Dialog open={open} disableEscapeKeyDown>
+      <DialogTitle>Benvenuto!</DialogTitle>
+      <DialogContent>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          Inserisci il tuo nome per iniziare a usare l'app
+        </Typography>
+        <TextField
+          autoFocus
+          margin="dense"
+          label="Nome utente"
+          type="text"
+          fullWidth
+          variant="standard"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleSubmit} disabled={!name.trim()}>
+          Inizia
+        </Button>
       </DialogActions>
     </Dialog>
   );

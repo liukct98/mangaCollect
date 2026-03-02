@@ -13,7 +13,13 @@ const { sequelize, Fumetto, FunkoPop, Figure } = require('./models');
 
 // CRUD Fumetti
 app.get('/api/fumetti', async (req, res) => {
-  const fumetti = await Fumetto.findAll({ order: [['titolo', 'ASC'], ['numero', 'ASC']] });
+  const { userName } = req.query;
+  let where = {};
+  if (userName) {
+    const users = Array.isArray(userName) ? userName : [userName];
+    where = { userName: { [require('sequelize').Op.in]: users } };
+  }
+  const fumetti = await Fumetto.findAll({ where, order: [['titolo', 'ASC'], ['numero', 'ASC']] });
   const grouped = fumetti.reduce((acc, f) => {
     acc[f.titolo] = acc[f.titolo] || [];
     acc[f.titolo].push(f);
@@ -58,7 +64,13 @@ app.delete('/api/fumetti/:id', async (req, res) => {
 
 // CRUD FunkoPop
 app.get('/api/funkopop', async (req, res) => {
-  const funkopop = await FunkoPop.findAll();
+  const { userName } = req.query;
+  let where = {};
+  if (userName) {
+    const users = Array.isArray(userName) ? userName : [userName];
+    where = { userName: { [require('sequelize').Op.in]: users } };
+  }
+  const funkopop = await FunkoPop.findAll({ where });
   res.json(funkopop);
 });
 app.post('/api/funkopop', async (req, res) => {
@@ -85,7 +97,13 @@ app.delete('/api/funkopop/:id', async (req, res) => {
 
 // CRUD Figure
 app.get('/api/figure', async (req, res) => {
-  const figure = await Figure.findAll();
+  const { userName } = req.query;
+  let where = {};
+  if (userName) {
+    const users = Array.isArray(userName) ? userName : [userName];
+    where = { userName: { [require('sequelize').Op.in]: users } };
+  }
+  const figure = await Figure.findAll({ where });
   res.json(figure);
 });
 app.post('/api/figure', async (req, res) => {
@@ -118,6 +136,26 @@ app.delete('/api/figure/:id', async (req, res) => {
     } else {
       res.status(404).json({ error: 'Figura non trovata' });
     }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Endpoint per ottenere la lista di tutti gli utenti
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = new Set();
+    
+    const fumetti = await Fumetto.findAll({ attributes: ['userName'], where: { userName: { [require('sequelize').Op.ne]: null } } });
+    fumetti.forEach(f => f.userName && users.add(f.userName));
+    
+    const funkopop = await FunkoPop.findAll({ attributes: ['userName'], where: { userName: { [require('sequelize').Op.ne]: null } } });
+    funkopop.forEach(f => f.userName && users.add(f.userName));
+    
+    const figure = await Figure.findAll({ attributes: ['userName'], where: { userName: { [require('sequelize').Op.ne]: null } } });
+    figure.forEach(f => f.userName && users.add(f.userName));
+    
+    res.json(Array.from(users).sort());
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

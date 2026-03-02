@@ -28,7 +28,8 @@ const Fumetto = sequelize.define('Fumetto', {
   anno: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
   condizione: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   immagine: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
-  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null }
+  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
+  userName: { type: DataTypes.STRING, allowNull: true, defaultValue: null }
 });
 
 // Modello FunkoPop
@@ -38,7 +39,8 @@ const FunkoPop = sequelize.define('FunkoPop', {
   serie: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   condizione: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   immagine: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
-  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null }
+  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
+  userName: { type: DataTypes.STRING, allowNull: true, defaultValue: null }
 });
 
 // Modello Figure
@@ -48,7 +50,8 @@ const Figure = sequelize.define('Figure', {
   altezza_cm: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
   condizione: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   immagine: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
-  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null }
+  note: { type: DataTypes.TEXT, allowNull: true, defaultValue: null },
+  userName: { type: DataTypes.STRING, allowNull: true, defaultValue: null }
 });
 
 module.exports = { sequelize, Fumetto, FunkoPop, Figure };
