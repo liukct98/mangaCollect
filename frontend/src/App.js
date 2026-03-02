@@ -41,7 +41,7 @@ const ImageCapture = ({ onCapture }) => {
   );
 };
 
-function FumettoDetailDialog({ open, onClose, series, onEdit, onDelete }) {
+function FumettoDetailDialog({ open, onClose, series, onEdit, onDelete, showUserNames }) {
   if (!series || series.length === 0) return null;
 
   const firstIssue = series[0];
@@ -66,7 +66,14 @@ function FumettoDetailDialog({ open, onClose, series, onEdit, onDelete }) {
                 }
               >
                 <ListItemText
-                  primary={`Numero: ${fumetto.numero}`}
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography>Numero: {fumetto.numero}</Typography>
+                      {showUserNames && fumetto.userName && (
+                        <Chip label={fumetto.userName} size="small" color="primary" />
+                      )}
+                    </Box>
+                  }
                   secondary={
                     <>
                       <Typography component="span" variant="body2" color="text.primary">
@@ -123,13 +130,28 @@ function App() {
       params = {};
     } else if (selectedUsers.length > 0) {
       // Mostra solo gli utenti selezionati
+      // Axios serializza gli array come userName[]=user1&userName[]=user2
       params = { userName: selectedUsers };
     } else {
       // Mostra solo i miei
-      params = { userName };
+      params = { userName: [userName] };
     }
     
-    axios.get(`${API_URL}/${currentType}`, { params })
+    axios.get(`${API_URL}/${currentType}`, { 
+      params,
+      paramsSerializer: params => {
+        // Serializza gli array come userName=user1&userName=user2
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach(v => searchParams.append(key, v));
+          } else {
+            searchParams.append(key, value);
+          }
+        });
+        return searchParams.toString();
+      }
+    })
       .then(res => setItems(res.data))
       .catch(err => console.error(`Error fetching ${currentType}:`, err));
   }, [currentType, userName, showAll, selectedUsers]);
@@ -386,6 +408,7 @@ function App() {
                     handleFormOpen(item);
                 }}
                 onDelete={handleDelete}
+                showUserNames={showAll || selectedUsers.length > 0}
             />
         )}
 
@@ -416,7 +439,23 @@ function ItemFormDialog({ open, onClose, onSave, item, itemType }) {
   };
 
   const handleSubmit = () => {
-    onSave(formData);
+    // Converti campi numerici vuoti in null o int
+    const cleanedData = { ...formData };
+    ['numero', 'anno', 'altezza_cm'].forEach(field => {
+      if (cleanedData[field] === '' || cleanedData[field] === null || cleanedData[field] === undefined) {
+        delete cleanedData[field]; // Rimuovi il campo se vuoto
+      } else if (cleanedData[field]) {
+        cleanedData[field] = parseInt(cleanedData[field], 10);
+      }
+    });
+    
+    // Assicurati che i campi obbligatori siano presenti
+    if (cleanedData.titolo && !cleanedData.numero && itemType === 'fumetti') {
+      alert('Il numero è obbligatorio per i fumetti');
+      return;
+    }
+    
+    onSave(cleanedData);
   };
 
   const getTitle = () => {
@@ -430,8 +469,12 @@ function ItemFormDialog({ open, onClose, onSave, item, itemType }) {
 
   const renderFields = () => {
     if (!formData) return null;
+    const requiredFields = itemType === 'fumetti' ? ['titolo', 'numero'] : 
+                           itemType === 'funkopop' ? ['nome', 'numero'] : 
+                           ['nome'];
+    
     return Object.keys(formData)
-      .filter(key => key !== 'id' && key !== 'createdAt' && key !== 'updatedAt' && key !== 'immagine')
+      .filter(key => key !== 'id' && key !== 'createdAt' && key !== 'updatedAt' && key !== 'immagine' && key !== 'userName')
       .map(field => (
       <TextField
         key={field}
@@ -443,6 +486,7 @@ function ItemFormDialog({ open, onClose, onSave, item, itemType }) {
         variant="standard"
         value={formData[field] || ''}
         onChange={handleChange}
+        required={requiredFields.includes(field)}
       />
     ));
   };
