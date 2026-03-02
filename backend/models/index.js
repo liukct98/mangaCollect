@@ -1,12 +1,23 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const path = require('path');
 
-// Inizializza Sequelize con SQLite
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: path.join(__dirname, '../db.sqlite'),
-  logging: false
-});
+// Inizializza Sequelize con PostgreSQL in produzione, SQLite in locale
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      },
+      logging: false
+    })
+  : new Sequelize({
+      dialect: 'sqlite',
+      storage: path.join(__dirname, '../db.sqlite'),
+      logging: false
+    });
 
 // Modello Fumetto
 const Fumetto = sequelize.define('Fumetto', {
