@@ -162,7 +162,7 @@ app.get('/api/users', async (req, res) => {
 });
 
 // Sincronizza i modelli e avvia il server
-sequelize.sync().then(() => {
+sequelize.sync({ alter: true }).then(() => {
   app.listen(port, () => {
     console.log(`Backend in ascolto su http://localhost:${port}`);
   });
